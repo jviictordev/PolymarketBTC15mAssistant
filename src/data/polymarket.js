@@ -103,7 +103,7 @@ export function pickLatestLiveMarket(markets, nowMs = Date.now()) {
       const started = x.startMs === null ? true : x.startMs <= nowMs;
       return started && nowMs < x.endMs;
     })
-    .sort((a, b) => a.endMs - b.endMs);
+    .sort((a, b) => b.endMs - a.endMs);
 
   if (live.length) return live[0].m;
 

@@ -10,11 +10,26 @@ export function scoreDirection(inputs) {
     macd,
     heikenColor,
     heikenCount,
-    failedVwapReclaim
+    failedVwapReclaim,
+    marketUp,
+    marketDown
   } = inputs;
 
   let up = 1;
   let down = 1;
+
+  // Polymarket consensus — peso dominante (agrega informação de muitos participantes)
+  // Os preços já são decimais 0-1 (ex: 0.46 = 46¢). Normaliza para remover o vig.
+  if (marketUp !== null && marketDown !== null && Number.isFinite(marketUp) && Number.isFinite(marketDown)) {
+    const sum = marketUp + marketDown;
+    if (sum > 0) {
+      const normUp = marketUp / sum;
+      const normDown = marketDown / sum;
+      // Peso proporcional à convicção: sempre entra, mais peso quanto mais extremo
+      up += normUp * 8;
+      down += normDown * 8;
+    }
+  }
 
   if (price !== null && vwap !== null) {
     if (price > vwap) up += 2;
@@ -26,9 +41,16 @@ export function scoreDirection(inputs) {
     if (vwapSlope < 0) down += 2;
   }
 
-  if (rsi !== null && rsiSlope !== null) {
-    if (rsi > 55 && rsiSlope > 0) up += 2;
-    if (rsi < 45 && rsiSlope < 0) down += 2;
+  if (rsi !== null) {
+    // Sobrecomprado: sinal de reversão para baixo
+    if (rsi > 70) down += 2;
+    // Sobrevendido: sinal de reversão para cima
+    else if (rsi < 30) up += 2;
+    // Tendência normal
+    else if (rsiSlope !== null) {
+      if (rsi > 55 && rsiSlope > 0) up += 2;
+      if (rsi < 45 && rsiSlope < 0) down += 2;
+    }
   }
 
   if (macd?.hist !== null && macd?.histDelta !== null) {

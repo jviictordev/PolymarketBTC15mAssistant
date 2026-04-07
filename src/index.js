@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { CONFIG } from "./config.js";
 import { fetchKlines, fetchLastPrice } from "./data/binance.js";
 import { fetchChainlinkBtcUsd } from "./data/chainlink.js";
@@ -403,6 +404,7 @@ async function main() {
   let prevSpotPrice = null;
   let prevCurrentPrice = null;
   let priceToBeatState = { slug: null, value: null, setAtMs: null };
+  let candleOpenPrice = { key: null, price: null };
 
   const header = [
     "timestamp",
@@ -416,7 +418,9 @@ async function main() {
     "mkt_down",
     "edge_up",
     "edge_down",
-    "recommendation"
+    "recommendation",
+    "candle_open",
+    "btc_price"
   ];
 
   while (true) {
@@ -494,6 +498,9 @@ async function main() {
         volumeAvg
       });
 
+      const marketUp = poly.ok ? poly.prices.up : null;
+      const marketDown = poly.ok ? poly.prices.down : null;
+
       const scored = scoreDirection({
         price: lastPrice,
         vwap: vwapNow,
@@ -503,16 +510,15 @@ async function main() {
         macd,
         heikenColor: consec.color,
         heikenCount: consec.count,
-        failedVwapReclaim
+        failedVwapReclaim,
+        marketUp,
+        marketDown
       });
 
       const timeAware = applyTimeAwareness(scored.rawUp, timeLeftMin, CONFIG.candleWindowMinutes);
-
-      const marketUp = poly.ok ? poly.prices.up : null;
-      const marketDown = poly.ok ? poly.prices.down : null;
       const edge = computeEdge({ modelUp: timeAware.adjustedUp, modelDown: timeAware.adjustedDown, marketYes: marketUp, marketNo: marketDown });
 
-      const rec = decide({ remainingMinutes: timeLeftMin, edgeUp: edge.edgeUp, edgeDown: edge.edgeDown, modelUp: timeAware.adjustedUp, modelDown: timeAware.adjustedDown });
+      const rec = decide({ remainingMinutes: timeLeftMin, edgeUp: edge.edgeUp, edgeDown: edge.edgeDown, modelUp: timeAware.adjustedUp, modelDown: timeAware.adjustedDown, windowMinutes: CONFIG.candleWindowMinutes });
 
       const vwapSlopeLabel = vwapSlope === null ? "-" : vwapSlope > 0 ? "UP" : vwapSlope < 0 ? "DOWN" : "FLAT";
 
@@ -578,6 +584,12 @@ async function main() {
         : null;
 
       const spotPrice = wsPrice ?? lastPrice;
+
+      // Trava o preço de abertura no início de cada vela
+      const candleKey = Math.floor(Date.now() / (CONFIG.candleWindowMinutes * 60_000));
+      if (candleOpenPrice.key !== candleKey && spotPrice !== null) {
+        candleOpenPrice = { key: candleKey, price: spotPrice };
+      }
       const currentPrice = chainlink?.price ?? null;
       const marketSlug = poly.ok ? String(poly.market?.slug ?? "") : "";
       const marketStartMs = poly.ok && poly.market?.eventStartTime ? new Date(poly.market.eventStartTime).getTime() : null;
@@ -718,7 +730,9 @@ async function main() {
         marketDown,
         edge.edgeUp,
         edge.edgeDown,
-        rec.action === "ENTER" ? `${rec.side}:${rec.phase}:${rec.strength}` : "NO_TRADE"
+        rec.action === "ENTER" ? `${rec.side}:${rec.phase}:${rec.strength}` : "NO_TRADE",
+        candleOpenPrice.price,
+        spotPrice
       ]);
     } catch (err) {
       console.log("────────────────────────────");

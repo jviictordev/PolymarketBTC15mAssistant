@@ -20,8 +20,11 @@ export function computeEdge({ modelUp, modelDown, marketYes, marketNo }) {
   };
 }
 
-export function decide({ remainingMinutes, edgeUp, edgeDown, modelUp = null, modelDown = null }) {
-  const phase = remainingMinutes > 10 ? "EARLY" : remainingMinutes > 5 ? "MID" : "LATE";
+export function decide({ remainingMinutes, edgeUp, edgeDown, modelUp = null, modelDown = null, windowMinutes = 15 }) {
+  const earlyThreshold = windowMinutes * (10 / 15);
+  const midThreshold = windowMinutes * (5 / 15);
+
+  const phase = remainingMinutes > earlyThreshold ? "EARLY" : remainingMinutes > midThreshold ? "MID" : "LATE";
 
   const threshold = phase === "EARLY" ? 0.05 : phase === "MID" ? 0.1 : 0.2;
 

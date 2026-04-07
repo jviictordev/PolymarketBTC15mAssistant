@@ -5,7 +5,7 @@ export const CONFIG = {
   clobBaseUrl: "https://clob.polymarket.com",
 
   pollIntervalMs: 1_000,
-  candleWindowMinutes: 15,
+  candleWindowMinutes: 5,
 
   vwapSlopeLookbackMinutes: 5,
   rsiPeriod: 14,
