@@ -4,9 +4,11 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "wallet": "node srcv2/index.js"
   },
   "dependencies": {
+    "cli-table3": "^0.6.5",
     "dotenv": "^17.4.1",
     "ethers": "^6.11.1",
     "https-proxy-agent": "^7.0.6",
